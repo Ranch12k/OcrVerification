@@ -1,0 +1,6 @@
+opencv-python
+pyzbar
+pillow
+pytesseract
+xmltodict
+numpy

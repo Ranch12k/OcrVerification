@@ -1,0 +1,130 @@
+import re
+from typing import Optional, Dict
+
+
+STATES = [
+    'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana',
+    'Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur',
+    'Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana',
+    'Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir','Ladakh'
+]
+
+
+def _clean_lines(text: str):
+    return [l.strip() for l in text.splitlines() if l.strip()]
+
+
+def extract_aadhaar_number(text: str) -> Optional[str]:
+    # Match 12 digits with optional spaces
+    m = re.search(r"\b(\d{4}\s?\d{4}\s?\d{4})\b", text)
+    if m:
+        return re.sub(r"\s+", "", m.group(1))
+    m2 = re.search(r"\b(\d{12})\b", text)
+    if m2:
+        return m2.group(1)
+    return None
+
+
+def extract_dob(text: str) -> Optional[str]:
+    m = re.search(r"(\d{2}[/-]\d{2}[/-]\d{4})", text)
+    if m:
+        return m.group(1)
+    # fallback: look for year
+    m2 = re.search(r"\b(19\d{2}|20\d{2})\b", text)
+    if m2:
+        return m2.group(1)
+    return None
+
+
+def extract_name(text: str) -> Optional[str]:
+    lines = _clean_lines(text)
+    # Filter obvious header/footer lines
+    bad_keywords = ('AADHAAR', 'Aadhaar', 'Issued', 'DOB', 'Date', 'VID', 'AUTHORITY', 'Address', 'UIDAI', 'No', 'Number')
+    candidates = []
+    for l in lines:
+        if any(k in l for k in bad_keywords):
+            continue
+        # ignore lines with many digits
+        if sum(c.isdigit() for c in l) > 3:
+            continue
+        candidates.append(l)
+
+    # Prefer a line with 2-4 words and alphabetic characters
+    for l in candidates:
+        words = [w for w in re.split(r"\s+", l) if w]
+        alpha_words = sum(1 for w in words if re.search(r"[A-Za-z]", w))
+        if 1 < len(words) <= 6 and alpha_words >= 1:
+            return l
+
+    return candidates[0] if candidates else None
+
+
+def extract_address_components(text: str) -> Dict[str, Optional[str]]:
+    lines = _clean_lines(text)
+    result = {"address": None, "locality": None, "city": None, "state": None, "pincode": None}
+
+    # Find PIN (6 digits)
+    pin_idx = None
+    for i, l in enumerate(lines):
+        m = re.search(r"\b(\d{6})\b", l)
+        if m:
+            result['pincode'] = m.group(1)
+            pin_idx = i
+            break
+
+    if pin_idx is not None:
+        # take up to 4 lines above the PIN as address
+        start = max(0, pin_idx - 4)
+        addr_lines = lines[start:pin_idx + 1]
+        result['address'] = ', '.join(addr_lines)
+        # try to set locality (line just above pin)
+        if pin_idx - 1 >= 0:
+            result['locality'] = lines[pin_idx - 1]
+        # try to detect state by matching known state names
+        for st in STATES:
+            if re.search(r"\b" + re.escape(st) + r"\b", text, flags=re.IGNORECASE):
+                result['state'] = st
+                break
+        # city: if 'DIST' or 'DIST:' appears
+        for l in lines:
+            if re.search(r"\bDIST\b|\bDistrict\b|\bDIST:\b", l, flags=re.IGNORECASE):
+                # attempt to extract name after DIST or DIST:
+                m = re.search(r"DIST[:\s-]*([A-Za-z\s-]+)", l, flags=re.IGNORECASE)
+                if m:
+                    result['city'] = m.group(1).strip(' ,')
+                    break
+
+    else:
+        # No PIN found: take first 3 lines as address candidate
+        if lines:
+            result['address'] = ', '.join(lines[:3])
+
+    return result
+
+
+def parse_ocr_text(text: str) -> Dict[str, Optional[str]]:
+    """Return parsed fields from OCR text: name, dob, yob, gender, aadhaar, address components."""
+    extracted = {}
+    extracted['name'] = extract_name(text)
+    extracted['dob'] = extract_dob(text)
+    yob = None
+    if extracted.get('dob') and re.match(r"\d{4}$", extracted['dob']):
+        yob = extracted['dob']
+    else:
+        m = re.search(r"\b(19\d{2}|20\d{2})\b", text)
+        yob = m.group(1) if m else None
+    extracted['yob'] = yob
+
+    gender = None
+    if re.search(r"\bMALE\b", text, flags=re.IGNORECASE):
+        gender = 'Male'
+    elif re.search(r"\bFEMALE\b", text, flags=re.IGNORECASE):
+        gender = 'Female'
+    extracted['gender'] = gender
+
+    extracted['aadhaar'] = extract_aadhaar_number(text)
+
+    addr = extract_address_components(text)
+    extracted.update(addr)
+
+    return extracted
