@@ -3,6 +3,13 @@ Improved output formatter for Aadhaar OCR results
 Returns cleaner, more readable results in English/Hindi
 """
 
+def mask_aadhaar(aadhaar_str):
+    """Mask Aadhaar number: show only last 4 digits, rest as ****"""
+    if not aadhaar_str or len(aadhaar_str) < 4:
+        return "****"
+    return "*" * (len(aadhaar_str) - 4) + aadhaar_str[-4:]
+
+
 def format_aadhaar_result(final_data, translations):
     """
     Format the Aadhaar OCR result into a clean, readable structure
@@ -109,37 +116,59 @@ def format_error_response(error_message):
 
 def format_detailed_response(final_data, translations, ocr_details_front, ocr_details_back, qr_data):
     """
-    Format a detailed response with all extracted data
-    Includes raw OCR text, parsed data, and translations
+    Format JSON response with 2 sections:
+    1. FRONT IMAGE - Name, DOB, Gender, Aadhaar
+    2. BACK IMAGE - Aadhaar, Address, Pincode, State
     """
     
-    formatted = format_aadhaar_result(final_data, translations)
-    
-    # Add detailed breakdown
-    formatted["detailed_breakdown"] = {
-        "front_image_ocr": {
-            "extracted_fields": clean_dict({
-                "aadhaar": ocr_details_front.get('aadhaar'),
+    formatted = {
+        "status": "success",
+        "message": "Aadhaar data extracted successfully",
+        
+        # ===== SECTION 1: FRONT IMAGE =====
+        "front_image": {
+            "section": "Front Side",
+            "data": clean_dict({
                 "name": ocr_details_front.get('name'),
-                "dob": ocr_details_front.get('dob'),
+                "name_english": translate_field(ocr_details_front.get('name')),
                 "gender": ocr_details_front.get('gender'),
-                "address": ocr_details_front.get('address'),
+                "date_of_birth": ocr_details_front.get('dob'),
+                "year_of_birth": ocr_details_front.get('yob'),
+                "aadhaar_number": ocr_details_front.get('aadhaar'),
+                "aadhaar_number_masked": mask_aadhaar(ocr_details_front.get('aadhaar')),
             })
         },
-        "back_image_ocr": {
-            "extracted_fields": clean_dict({
-                "aadhaar": ocr_details_back.get('aadhaar'),
-                "name": ocr_details_back.get('name'),
-                "address": ocr_details_back.get('address'),
+        
+        # ===== SECTION 2: BACK IMAGE =====
+        "back_image": {
+            "section": "Back Side",
+            "data": clean_dict({
+                "aadhaar_number": ocr_details_back.get('aadhaar'),
+                "aadhaar_number_masked": mask_aadhaar(ocr_details_back.get('aadhaar')),
+                "full_address": ocr_details_back.get('address'),
+                "full_address_english": translate_field(ocr_details_back.get('address')),
+                "locality": ocr_details_back.get('locality'),
+                "locality_english": translate_field(ocr_details_back.get('locality')),
                 "city": ocr_details_back.get('city'),
-                "pincode": ocr_details_back.get('pincode'),
+                "city_english": translate_field(ocr_details_back.get('city')),
                 "state": ocr_details_back.get('state'),
+                "state_english": translate_field(ocr_details_back.get('state')),
+                "pincode": ocr_details_back.get('pincode'),
             })
         },
-        "qr_code_data": clean_dict({
+        
+        # ===== SECTION 3: QR CODE DATA (Optional) =====
+        "qr_code": clean_dict({
             "uid": qr_data.get('uid') if qr_data else None,
             "vid": qr_data.get('vid') if qr_data else None,
-        })
+        }) if qr_data else None,
+        
+        "summary": {
+            "total_fields_extracted": count_non_empty(ocr_details_front) + count_non_empty(ocr_details_back),
+            "front_fields": count_non_empty(ocr_details_front),
+            "back_fields": count_non_empty(ocr_details_back),
+            "confidence": "High" if ocr_details_front.get('name') else "Medium"
+        }
     }
     
     return formatted
