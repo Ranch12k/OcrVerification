@@ -187,13 +187,17 @@ def assemble_final(combined):
     }
 
     # ==== Merged Final Data (Prefer QR → Back OCR → Front OCR) ====
+    aadhaar_full = xml.get('uid') or ocr_front.get('aadhaar')
     final_data = {
         "personal_info": {
             "name": xml.get('name') or ocr_front.get('name'),
             "gender": xml.get('gender') or ocr_front.get('gender'),
             "date_of_birth": xml.get('dob') or ocr_front.get('dob'),
             "year_of_birth": xml.get('yob') or ocr_front.get('yob'),
-            "aadhaar_number": mask_aadhaar_number(xml.get('uid') or ocr_front.get('aadhaar')),
+            "dob": xml.get('dob') or ocr_front.get('dob'),
+            "yob": xml.get('yob') or ocr_front.get('yob'),
+            "aadhaar": aadhaar_full,
+            "aadhaar_masked": mask_aadhaar_number(aadhaar_full),
         },
         "address": {
             "house": xml.get('house'),
@@ -204,6 +208,12 @@ def assemble_final(combined):
             "state": xml.get('state') or ocr_back.get('state'),
             "pincode": xml.get('pc') or ocr_back.get('pincode'),
             "full_address": ocr_back.get('address') or ocr_front.get('address'),
+        },
+        "qr_and_xml": {
+            "uid": xml.get('uid'),
+            "vid": xml.get('vid'),
+            "qr_raw": combined.get('qr_raw'),
+            "qr_raw_masked": mask_qr_code(combined.get('qr_raw')) if combined.get('qr_raw') else None,
         },
         "photo": {
             "face_image_base64": combined.get('face_image_base64'),

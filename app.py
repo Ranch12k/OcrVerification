@@ -75,15 +75,31 @@ def process_aadhaar():
         back.save(back_path)
         
         # Import and run main processing
-        from main import process_images
+        from main import process_images, assemble_final
+        from modules.output_formatter import format_detailed_response
+        
         result = process_images(front_path, back_path)
+        final = assemble_final(result)
+        
+        # Extract components for formatter
+        final_data = final.get('final_data', {})
+        translations = final.get('translations', {})
+        ocr_details_front = final.get('detailed_breakdown', {}).get('ocr_front_extracted', {}).get('ocr_parsed_dict', {})
+        ocr_details_back = final.get('detailed_breakdown', {}).get('ocr_back_extracted', {}).get('ocr_parsed_dict', {})
+        qr_data = final.get('detailed_breakdown', {}).get('qr_xml_extracted', {}).get('qr_decoded', {})
+        
+        # Format for cleaner output
+        formatted_result = format_detailed_response(final_data, translations, ocr_details_front, ocr_details_back, qr_data)
+        
+        # Add raw data for advanced users
+        formatted_result['raw_data'] = final.get('raw_sources', {})
         
         # Save result to outputs folder
         output_file = os.path.join(OUTPUT_FOLDER, f'output_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
         with open(output_file, 'w') as f:
-            json.dump(result, f, indent=2)
+            json.dump(formatted_result, f, indent=2, ensure_ascii=False)
         
-        return jsonify(result), 200
+        return jsonify(formatted_result), 200
         
     except ImportError as e:
         return jsonify({'error': f'Import error: {str(e)}'}), 500
