@@ -143,6 +143,8 @@ def format_detailed_response(final_data, translations, ocr_details_front, ocr_de
         "back_image": {
             "section": "Back Side",
             "data": clean_dict({
+                "guardian_name": ocr_details_back.get('guardian_name'),
+                "guardian_name_english": translate_field(ocr_details_back.get('guardian_name')),
                 "aadhaar_number": ocr_details_back.get('aadhaar'),
                 "aadhaar_number_masked": mask_aadhaar(ocr_details_back.get('aadhaar')),
                 "full_address": ocr_details_back.get('address'),
