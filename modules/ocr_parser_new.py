@@ -6,6 +6,53 @@ from .india_states_districts import (
 )
 
 
+def _filter_aadhaar_headers_footers(text: str) -> str:
+    """Remove common Aadhaar document headers and footers"""
+    # Patterns to ignore/remove
+    ignore_patterns = [
+        r'Government\s+of\s+India',
+        r'Unique\s+Identification\s+Authority',
+        r'UIDAI',
+        r'My\s+Aadhaar',
+        r'Mera\s+Aadhaar',
+        r'UIDAI\s+Mobile\s+Number',
+        r'@aadhaar',
+        r'@india\.gov\.in',
+        r'help\.aadhaar@uidai\.net\.in',
+        r'uidai\.gov\.in',
+        r'www\.uidai\.gov\.in',
+        r'Aadhaar\s+Number',
+        r'AADHAAR\s+NUMBER',
+        r'Logo\s+of\s+Aadhaar',
+        r'Issued\s+by\s+UIDAI',
+        r'Ministry\s+of\s+Electronics',
+        r'Government\s+Logo',
+        r'India\s+Government',
+    ]
+    
+    result = text
+    for pattern in ignore_patterns:
+        result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+    
+    # Also remove lines that are mostly these patterns
+    lines = result.splitlines()
+    filtered_lines = []
+    for line in lines:
+        # Skip lines that are too short and contain only noise
+        if len(line.strip()) < 3:
+            continue
+        # Skip lines with too many @ symbols or dots (usually email/website noise)
+        if line.count('@') > 1 or line.count('.') > 3:
+            continue
+        # Skip lines that are mostly numbers and special chars (usually footer)
+        alphanumeric_ratio = sum(1 for c in line if c.isalnum()) / max(1, len(line))
+        if alphanumeric_ratio < 0.3:
+            continue
+        filtered_lines.append(line)
+    
+    return '\n'.join(filtered_lines)
+
+
 def _clean_lines(text: str):
     return [l.strip() for l in text.splitlines() if l.strip()]
 
@@ -48,12 +95,17 @@ def extract_dob(text: str) -> Optional[str]:
 
 
 def extract_name(text: str) -> Optional[str]:
-    lines = _clean_lines(text)
+    # First remove headers/footers
+    cleaned_text = _filter_aadhaar_headers_footers(text)
+    lines = _clean_lines(cleaned_text)
+    
     # Filter obvious header/footer lines and government text
     bad_keywords = (
         'AADHAAR', 'Aadhaar', 'Issued', 'DOB', 'Date', 'VID', 'AUTHORITY', 
         'Address', 'UIDAI', 'No', 'Number', 'Government', 'india', 'India',
-        'Registration', 'Authority', 'uidai.gov', '@', 'help', 'www'
+        'Registration', 'Authority', 'uidai.gov', '@', 'help', 'www',
+        'Mobile', 'Email', 'Phone', 'Call', 'SMS', 'Help', 'Support',
+        'Ministry', 'Electronics', 'IT', 'Government', 'Logo', 'Logo'
     )
     candidates = []
     for l in lines:
@@ -69,8 +121,10 @@ def extract_name(text: str) -> Optional[str]:
         # Skip lines with special characters or mixed text
         if sum(c in l for c in ['|', '&', '/', '~', '(', ')', '[', ']']) > 2:
             continue
+        # Skip lines with email/website patterns
+        if '@' in l or 'http' in l.lower() or '.gov' in l.lower() or '.in' in l.lower():
+            continue
         candidates.append(l)
-
 
     # Prefer a line with 2-4 words and alphabetic characters
     for l in candidates:
@@ -147,28 +201,31 @@ def extract_address_components(text: str) -> Dict[str, Optional[str]]:
 
 def parse_ocr_text(text: str) -> Dict[str, Optional[str]]:
     """Return parsed fields from OCR text: name, dob, yob, gender, aadhaar, address components, guardian name."""
+    # First, filter out common headers and footers
+    cleaned_text = _filter_aadhaar_headers_footers(text)
+    
     extracted = {}
-    extracted['name'] = extract_name(text)
-    extracted['dob'] = extract_dob(text)
-    extracted['guardian_name'] = extract_guardian_name(text)
+    extracted['name'] = extract_name(cleaned_text)
+    extracted['dob'] = extract_dob(cleaned_text)
+    extracted['guardian_name'] = extract_guardian_name(cleaned_text)
     yob = None
     if extracted.get('dob') and re.match(r"\d{4}$", extracted['dob']):
         yob = extracted['dob']
     else:
-        m = re.search(r"\b(19\d{2}|20\d{2})\b", text)
+        m = re.search(r"\b(19\d{2}|20\d{2})\b", cleaned_text)
         yob = m.group(1) if m else None
     extracted['yob'] = yob
 
     gender = None
-    if re.search(r"\bMALE\b", text, flags=re.IGNORECASE):
+    if re.search(r"\bMALE\b", cleaned_text, flags=re.IGNORECASE):
         gender = 'Male'
-    elif re.search(r"\bFEMALE\b", text, flags=re.IGNORECASE):
+    elif re.search(r"\bFEMALE\b", cleaned_text, flags=re.IGNORECASE):
         gender = 'Female'
     extracted['gender'] = gender
 
-    extracted['aadhaar'] = extract_aadhaar_number(text)
+    extracted['aadhaar'] = extract_aadhaar_number(cleaned_text)
 
-    addr = extract_address_components(text)
+    addr = extract_address_components(cleaned_text)
     extracted.update(addr)
 
     return extracted
