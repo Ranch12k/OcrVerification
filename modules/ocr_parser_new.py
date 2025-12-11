@@ -94,6 +94,45 @@ def extract_dob(text: str) -> Optional[str]:
     return None
 
 
+def extract_gender(text: str) -> Optional[str]:
+    """Extract gender from near DOB area or anywhere in text. Handles English and Hindi."""
+    # Find DOB position to search nearby
+    dob_match = re.search(r"(\d{2}[/-]\d{2}[/-]\d{4})", text)
+    
+    # If DOB found, search in lines around DOB
+    if dob_match:
+        dob_start = dob_match.start()
+        # Get 500 chars before and after DOB
+        context_start = max(0, dob_start - 500)
+        context_end = min(len(text), dob_match.end() + 500)
+        context_text = text[context_start:context_end]
+    else:
+        context_text = text
+    
+    # Check for English gender markers
+    # Female variations first (to avoid MALE matching part of FEMALE)
+    # FEMALE, महिला, female
+    if re.search(r"(FEMALE|महिला)", context_text, flags=re.IGNORECASE):
+        return 'Female'
+    
+    # Other variations: OTHER, अन्य
+    if re.search(r"(OTHER|अन्य)", context_text, flags=re.IGNORECASE):
+        return 'Other'
+    
+    # Male variations: MALE, पुरुष, male
+    if re.search(r"(MALE|पुरुष)", context_text, flags=re.IGNORECASE):
+        return 'Male'
+    
+    # Shorthand M/F with Gender label
+    if re.search(r"(?:Gender|लिंग)\s*:?\s*[F/](?:\s|$|,)", context_text, flags=re.IGNORECASE):
+        return 'Female'
+    
+    if re.search(r"(?:Gender|लिंग)\s*:?\s*[M/](?:\s|$|,)", context_text, flags=re.IGNORECASE):
+        return 'Male'
+    
+    return None
+
+
 def extract_name(text: str) -> Optional[str]:
     """Extract name - prioritize text BEFORE DOB (front image structure)"""
     cleaned_text = _filter_aadhaar_headers_footers(text)
@@ -255,11 +294,7 @@ def parse_ocr_text(text: str) -> Dict[str, Optional[str]]:
         yob = m.group(1) if m else None
     extracted['yob'] = yob
 
-    gender = None
-    if re.search(r"\bMALE\b", cleaned_text, flags=re.IGNORECASE):
-        gender = 'Male'
-    elif re.search(r"\bFEMALE\b", cleaned_text, flags=re.IGNORECASE):
-        gender = 'Female'
+    gender = extract_gender(cleaned_text)
     extracted['gender'] = gender
 
     extracted['aadhaar'] = extract_aadhaar_number(cleaned_text)
