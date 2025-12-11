@@ -119,7 +119,31 @@ def format_detailed_response(final_data, translations, ocr_details_front, ocr_de
     Format JSON response with 2 sections:
     1. FRONT IMAGE - Name, DOB, Gender, Aadhaar
     2. BACK IMAGE - Aadhaar, Address, Pincode, State
+    3. DATA_SOURCE - Where each field was extracted from
     """
+    
+    # Map fields to their source
+    data_source_map = {
+        # Front image fields
+        "name": "Front image - extracted before DOB line",
+        "gender": "Front image - near DOB area (English or Hindi)",
+        "date_of_birth": "Front image - DOB pattern matching",
+        "year_of_birth": "Front image - year extraction from DOB",
+        "aadhaar_front": "Front image - 12-digit pattern",
+        
+        # Back image fields  
+        "guardian_name": "Back image - C/O: or Father: pattern",
+        "aadhaar_back": "Back image - 12-digit pattern",
+        "full_address": "Back image - 'Address:' label or PIN-based extraction",
+        "locality": "Back image - line above PIN code",
+        "city": "Back image - DIST: or District: pattern",
+        "state": "Back image - state name matching from address",
+        "pincode": "Back image - 6-digit PIN code pattern",
+        
+        # QR code fields
+        "uid": "QR Code - 2D barcode decoding",
+        "vid": "QR Code - 2D barcode decoding",
+    }
     
     formatted = {
         "status": "success",
@@ -164,6 +188,30 @@ def format_detailed_response(final_data, translations, ocr_details_front, ocr_de
             "uid": qr_data.get('uid') if qr_data else None,
             "vid": qr_data.get('vid') if qr_data else None,
         }) if qr_data else None,
+        
+        # ===== SECTION 4: DATA SOURCE TRACKING =====
+        "data_source": {
+            "front_image": {
+                "name": data_source_map.get("name") if ocr_details_front.get('name') else None,
+                "gender": data_source_map.get("gender") if ocr_details_front.get('gender') else None,
+                "date_of_birth": data_source_map.get("date_of_birth") if ocr_details_front.get('dob') else None,
+                "year_of_birth": data_source_map.get("year_of_birth") if ocr_details_front.get('yob') else None,
+                "aadhaar_number": data_source_map.get("aadhaar_front") if ocr_details_front.get('aadhaar') else None,
+            },
+            "back_image": {
+                "guardian_name": data_source_map.get("guardian_name") if ocr_details_back.get('guardian_name') else None,
+                "aadhaar_number": data_source_map.get("aadhaar_back") if ocr_details_back.get('aadhaar') else None,
+                "full_address": data_source_map.get("full_address") if ocr_details_back.get('address') else None,
+                "locality": data_source_map.get("locality") if ocr_details_back.get('locality') else None,
+                "city": data_source_map.get("city") if ocr_details_back.get('city') else None,
+                "state": data_source_map.get("state") if ocr_details_back.get('state') else None,
+                "pincode": data_source_map.get("pincode") if ocr_details_back.get('pincode') else None,
+            },
+            "qr_code": {
+                "uid": data_source_map.get("uid") if qr_data and qr_data.get('uid') else None,
+                "vid": data_source_map.get("vid") if qr_data and qr_data.get('vid') else None,
+            } if qr_data else None
+        },
         
         "summary": {
             "total_fields_extracted": count_non_empty(ocr_details_front) + count_non_empty(ocr_details_back),
