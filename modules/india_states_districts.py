@@ -100,6 +100,32 @@ INDIA_STATES_DISTRICTS = {
         "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg",
         "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"
     ],
+    "Manipur": [
+        "Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West",
+        "Jiribam", "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl",
+        "Senapati", "Tamenglong", "Tengnoupal", "Thoubal", "Ukhrul"
+    ],
+    "Meghalaya": [
+        "Baghmara", "East Garo Hills", "East Jaintia Hills", "East Khasi Hills",
+        "Goalpara", "Meghalaya", "North Garo Hills", "Ri-Bhoi", "South Garo Hills",
+        "South West Garo Hills", "South West Khasi Hills", "Udalguri", "West Garo Hills",
+        "West Jaintia Hills", "West Khasi Hills"
+    ],
+    "Mizoram": [
+        "Aihui", "Aizol", "Champhai", "Kolasib", "Lawngtlai", "Lunglei", "Mamit",
+        "Saitual", "Serchhip"
+    ],
+    "Nagaland": [
+        "Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Nagaon",
+        "Peren", "Phek", "Tuensang", "Wokha", "Zunheboto"
+    ],
+    "Odisha": [
+        "Angul", "Balangir", "Balasore", "Bargarh", "Boudh", "Cuttack", "Debagarh",
+        "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur", "Jajpur", "Jharsuguda",
+        "Kalahandi", "Kandhamal", "Kendrapara", "Kendujhar", "Khordha", "Koraput",
+        "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada", "Puri",
+        "Rayagada", "Sambalpur", "Sankhara", "Subarnapur", "Sundergarh"
+    ],
     "Punjab": [
         "Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka",
         "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala",
@@ -113,6 +139,9 @@ INDIA_STATES_DISTRICTS = {
         "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu",
         "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand",
         "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"
+    ],
+    "Sikkim": [
+        "East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"
     ],
     "Tamil Nadu": [
         "Ariyalur", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri",
@@ -131,6 +160,10 @@ INDIA_STATES_DISTRICTS = {
         "Nirmal", "Nizamabad", "Peddapalli", "Rajanna", "Ranga Reddy",
         "Sangareddy", "Siddipet", "Suryapet", "Vikarabad", "Wanaparthy",
         "Warangal Urban", "Warangal Rural", "Yadadri Bhuvanagiri"
+    ],
+    "Tripura": [
+        "Dhalai", "Gumla", "Khowai", "North Tripura", "Sepahijala", "South Tripura",
+        "Sunamganj", "Unakoti", "West Tripura"
     ],
     "Uttar Pradesh": [
         "Agra", "Aligarh", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya",
