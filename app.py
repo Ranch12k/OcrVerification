@@ -56,23 +56,35 @@ def version():
 
 @app.route('/process', methods=['POST'])
 def process_aadhaar():
-    """Process uploaded Aadhaar images"""
+    """Process uploaded Aadhaar images (single or both)"""
     try:
-        if 'front' not in request.files or 'back' not in request.files:
-            return jsonify({'error': 'Missing front or back image'}), 400
+        # Check if at least one image is provided
+        has_front = 'front' in request.files and request.files['front'].filename != ''
+        has_back = 'back' in request.files and request.files['back'].filename != ''
         
-        front = request.files['front']
-        back = request.files['back']
+        if not has_front and not has_back:
+            return jsonify({'error': 'Upload at least one image (front or back)'}), 400
         
-        if front.filename == '' or back.filename == '':
-            return jsonify({'error': 'Empty filename'}), 400
+        front_path = None
+        back_path = None
         
-        # Save uploaded files
-        front_path = os.path.join(UPLOAD_FOLDER, 'aff.jpg')
-        back_path = os.path.join(UPLOAD_FOLDER, 'aadhaarBack.jpg')
+        # Handle front image
+        if has_front:
+            front = request.files['front']
+            front_path = os.path.join(UPLOAD_FOLDER, 'aff.jpg')
+            front.save(front_path)
         
-        front.save(front_path)
-        back.save(back_path)
+        # Handle back image
+        if has_back:
+            back = request.files['back']
+            back_path = os.path.join(UPLOAD_FOLDER, 'aadhaarBack.jpg')
+            back.save(back_path)
+        
+        # If only one image provided, use it for both (parser will handle it)
+        if not has_front:
+            front_path = back_path
+        elif not has_back:
+            back_path = front_path
         
         # Import and run main processing
         from main import process_images, assemble_final
@@ -93,6 +105,13 @@ def process_aadhaar():
         
         # Add raw data for advanced users
         formatted_result['raw_data'] = final.get('raw_sources', {})
+        
+        # Add upload info
+        formatted_result['upload_info'] = {
+            'front_uploaded': has_front,
+            'back_uploaded': has_back,
+            'single_image_mode': (has_front and not has_back) or (has_back and not has_front)
+        }
         
         # Save result to outputs folder
         output_file = os.path.join(OUTPUT_FOLDER, f'output_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')

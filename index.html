@@ -240,21 +240,20 @@
         
         <div class="info-box">
             <strong>Instructions:</strong>
-            1. Upload both Aadhaar front and back images<br>
+            1. Upload Aadhaar front OR back image (or both)<br>
             2. Click "Process" to extract data<br>
             3. View results with masked sensitive info
         </div>
         
         <form id="uploadForm">
             <div class="form-group">
-                <label>Aadhaar Front Image *</label>
+                <label>Aadhaar Front Image (Optional)</label>
                 <div class="file-input-wrapper">
                     <input 
                         type="file" 
                         id="frontFile" 
                         name="front" 
-                        accept="image/*" 
-                        required
+                        accept="image/*"
                     >
                     <label for="frontFile" class="file-input-label" id="frontLabel">
                         <span class="file-icon">📷</span>
@@ -267,14 +266,13 @@
             </div>
             
             <div class="form-group">
-                <label>Aadhaar Back Image *</label>
+                <label>Aadhaar Back Image (Optional)</label>
                 <div class="file-input-wrapper">
                     <input 
                         type="file" 
                         id="backFile" 
                         name="back" 
-                        accept="image/*" 
-                        required
+                        accept="image/*"
                     >
                     <label for="backFile" class="file-input-label" id="backLabel">
                         <span class="file-icon">📷</span>
@@ -333,14 +331,19 @@
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            if (!frontFile.files.length || !backFile.files.length) {
-                alert('Please select both front and back images');
+            // At least one image must be selected
+            if (!frontFile.files.length && !backFile.files.length) {
+                alert('Please select at least one image (front or back)');
                 return;
             }
             
             const formData = new FormData();
-            formData.append('front', frontFile.files[0]);
-            formData.append('back', backFile.files[0]);
+            if (frontFile.files.length) {
+                formData.append('front', frontFile.files[0]);
+            }
+            if (backFile.files.length) {
+                formData.append('back', backFile.files[0]);
+            }
             
             loading.style.display = 'block';
             result.style.display = 'none';
