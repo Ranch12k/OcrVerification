@@ -95,38 +95,54 @@ def extract_dob(text: str) -> Optional[str]:
 
 
 def extract_name(text: str) -> Optional[str]:
-    # First remove headers/footers
+    """Extract name - prioritize text BEFORE DOB (front image structure)"""
     cleaned_text = _filter_aadhaar_headers_footers(text)
     lines = _clean_lines(cleaned_text)
     
-    # Filter obvious header/footer lines and government text
+    # Find DOB position
+    dob_idx = None
+    for i, l in enumerate(lines):
+        if re.search(r"\d{2}[/-]\d{2}[/-]\d{4}", l):
+            dob_idx = i
+            break
+    
+    # Strategy 1: Look BEFORE DOB for name (typical front image layout)
+    if dob_idx is not None and dob_idx > 0:
+        for i in range(dob_idx - 1, -1, -1):
+            l = lines[i]
+            bad_kw = ('AADHAAR', 'Aadhaar', 'Issued', 'DOB', 'Date', 'VID', 'AUTHORITY',
+                     'UIDAI', 'Government', 'india', 'India', 'Registration', 'Authority',
+                     'uidai.gov', '@', 'help', 'www', 'Mobile', 'Email', 'Phone', 'Father', 'C/O', 'Care')
+            if any(k in l for k in bad_kw):
+                continue
+            words = [w for w in re.split(r"\s+", l.strip()) if w]
+            alpha_words = sum(1 for w in words if re.search(r"[A-Za-z]", w))
+            if 1 < len(words) <= 6 and alpha_words >= 1 and sum(c.isdigit() for c in l) <= 1:
+                if len(l) <= 60 and sum(c in l for c in ['|', '&', '/', '~']) <= 1:
+                    return l.strip()
+    
+    # Strategy 2: General extraction if DOB not found
     bad_keywords = (
         'AADHAAR', 'Aadhaar', 'Issued', 'DOB', 'Date', 'VID', 'AUTHORITY', 
         'Address', 'UIDAI', 'No', 'Number', 'Government', 'india', 'India',
         'Registration', 'Authority', 'uidai.gov', '@', 'help', 'www',
         'Mobile', 'Email', 'Phone', 'Call', 'SMS', 'Help', 'Support',
-        'Ministry', 'Electronics', 'IT', 'Government', 'Logo', 'Logo'
+        'Ministry', 'Electronics', 'IT', 'Government', 'Logo'
     )
     candidates = []
     for l in lines:
-        # Skip if line contains bad keywords
         if any(k in l for k in bad_keywords):
             continue
-        # Skip lines with too many digits (like dates/pincodes)
         if sum(c.isdigit() for c in l) > 3:
             continue
-        # Skip very long lines (usually combined text)
         if len(l) > 60:
             continue
-        # Skip lines with special characters or mixed text
         if sum(c in l for c in ['|', '&', '/', '~', '(', ')', '[', ']']) > 2:
             continue
-        # Skip lines with email/website patterns
         if '@' in l or 'http' in l.lower() or '.gov' in l.lower() or '.in' in l.lower():
             continue
         candidates.append(l)
 
-    # Prefer a line with 2-4 words and alphabetic characters
     for l in candidates:
         words = [w for w in re.split(r"\s+", l) if w]
         alpha_words = sum(1 for w in words if re.search(r"[A-Za-z]", w))
@@ -161,7 +177,30 @@ def extract_address_components(text: str) -> Dict[str, Optional[str]]:
     lines = _clean_lines(text)
     result = {"address": None, "locality": None, "city": None, "state": None, "pincode": None}
 
-    # Find PIN (6 digits)
+    # Strategy 1: Look for explicit "Address:" pattern - MOST ACCURATE
+    addr_match = re.search(r"Address\s*:?\s*(.+?)(?:$|\n)", text, re.IGNORECASE | re.MULTILINE)
+    if addr_match:
+        full_addr = addr_match.group(1).strip()
+        result['address'] = full_addr
+        
+        # Extract pincode from address
+        pin_m = re.search(r"(\d{6})", full_addr)
+        if pin_m:
+            result['pincode'] = pin_m.group(1)
+        
+        # Extract state from address
+        state_m = _fuzzy_match_state_from_text(full_addr)
+        if state_m:
+            result['state'] = state_m
+        
+        # Extract locality (last part after comma)
+        addr_parts = [p.strip() for p in full_addr.split(',')]
+        if len(addr_parts) > 1:
+            result['locality'] = addr_parts[-1]
+        
+        return result
+
+    # Strategy 2: Find PIN (6 digits) and build address around it
     pin_idx = None
     for i, l in enumerate(lines):
         m = re.search(r"\b(\d{6})\b", l)
