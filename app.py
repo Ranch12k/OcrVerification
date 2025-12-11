@@ -1,9 +1,9 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import os
 import json
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
 UPLOAD_FOLDER = 'uploads'
@@ -14,13 +14,21 @@ for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER]:
 
 @app.route('/', methods=['GET'])
 def index():
-    """Root endpoint with API info"""
+    """Serve HTML form or API info based on Accept header"""
+    # Check if browser is requesting HTML
+    accept_header = request.headers.get('Accept', '')
+    if 'text/html' in accept_header or not accept_header:
+        try:
+            return send_from_directory('.', 'index.html')
+        except:
+            pass
+    # Return JSON API info
     return jsonify({
         'service': 'OcrVerification API',
         'version': '1.0.0',
         'status': 'running',
         'endpoints': {
-            'GET /': 'API information',
+            'GET /': 'API information / Web UI',
             'GET /health': 'Health check',
             'GET /version': 'API version',
             'POST /process': 'Process Aadhaar images (upload front and back)'
