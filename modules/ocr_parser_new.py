@@ -38,16 +38,28 @@ def extract_dob(text: str) -> Optional[str]:
 
 def extract_name(text: str) -> Optional[str]:
     lines = _clean_lines(text)
-    # Filter obvious header/footer lines
-    bad_keywords = ('AADHAAR', 'Aadhaar', 'Issued', 'DOB', 'Date', 'VID', 'AUTHORITY', 'Address', 'UIDAI', 'No', 'Number')
+    # Filter obvious header/footer lines and government text
+    bad_keywords = (
+        'AADHAAR', 'Aadhaar', 'Issued', 'DOB', 'Date', 'VID', 'AUTHORITY', 
+        'Address', 'UIDAI', 'No', 'Number', 'Government', 'india', 'India',
+        'Registration', 'Authority', 'uidai.gov', '@', 'help', 'www'
+    )
     candidates = []
     for l in lines:
+        # Skip if line contains bad keywords
         if any(k in l for k in bad_keywords):
             continue
-        # ignore lines with many digits
+        # Skip lines with too many digits (like dates/pincodes)
         if sum(c.isdigit() for c in l) > 3:
             continue
+        # Skip very long lines (usually combined text)
+        if len(l) > 60:
+            continue
+        # Skip lines with special characters or mixed text
+        if sum(c in l for c in ['|', '&', '/', '~', '(', ')', '[', ']']) > 2:
+            continue
         candidates.append(l)
+
 
     # Prefer a line with 2-4 words and alphabetic characters
     for l in candidates:

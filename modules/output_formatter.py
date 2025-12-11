@@ -33,8 +33,9 @@ def format_aadhaar_result(final_data, translations):
             "name": person_info.get('name'),
             "name_english": translate_field(person_info.get('name')),
             "gender": person_info.get('gender'),
-            "date_of_birth": person_info.get('dob'),
-            "year_of_birth": person_info.get('yob'),
+            "date_of_birth": person_info.get('date_of_birth'),
+            "date_of_birth_formatted": person_info.get('dob'),
+            "year_of_birth": person_info.get('year_of_birth'),
         }),
         
         "address_details": clean_dict({
